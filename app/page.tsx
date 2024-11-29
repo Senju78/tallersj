@@ -5,7 +5,6 @@ import { supabase } from "./lib/supabase";
 import { NoteData } from "./types/Note";
 import NoteList from "./components/note-list/NoteList";
 import Sidebar from "./components/sidebar/Sidebar";
-import NoteStats from "./components/note-stats/NoteStats";
 
 export default function Home() {
     const [notes, setNotes] = useState<NoteData[]>([]);
@@ -29,7 +28,7 @@ export default function Home() {
                 console.error("Error fetching notes:", error.message);
             } else {
                 // Convert string dates to Date objects
-                const processedNotes = (data || []).map(note => ({
+                const processedNotes = (data || []).map((note) => ({
                     ...note,
                     created_at: new Date(note.created_at),
                 }));
@@ -42,19 +41,16 @@ export default function Home() {
         fetchNotes();
     }, [filterId]);
 
-    // Handle adding a new note
     const handleAddNote = async () => {
         const newNote = {
             title: "",
             content: "",
             category: 1,
-            created_at: new Date().toISOString(), 
+            created_at: new Date().toISOString(),
             status: 0,
         };
 
-        const temporaryId = Math.random();
-        setNotes([{ id: temporaryId, ...newNote, created_at: new Date() }, ...notes]);
-
+        // Insert the new note to Supabase and wait for the ID to be generated
         const { data, error } = await supabase
             .from("notes")
             .insert(newNote)
@@ -63,69 +59,34 @@ export default function Home() {
 
         if (error) {
             console.error("Error adding note to Supabase:", error.message);
-            setNotes((currentNotes) =>
-                currentNotes.filter((note) => note.id !== temporaryId)
-            );
         } else if (data) {
-            setNotes((currentNotes) =>
-                currentNotes.map((note) =>
-                    note.id === temporaryId
-                        ? { ...data, created_at: new Date(data.created_at) }
-                        : note
-                )
-            );
+            // Once the note is inserted, we update the state with the real ID
+            setNotes((currentNotes) => [
+                { ...data, created_at: new Date(data.created_at) },
+                ...currentNotes,
+            ]);
         }
     };
 
     const updateNote = async (updatedNote: NoteData) => {
-        const updatedNotes = notes.map(note =>
+        const updatedNotes = notes.map((note) =>
             note.id === updatedNote.id ? updatedNote : note
         );
         setNotes(updatedNotes);
 
-        if (updatedNote.id.toString().includes(".")) {
-            if (updatedNote.title === "" && updatedNote.content === "") {
-                setNotes(notes =>
-                    notes.filter(note => note.id !== updatedNote.id)
-                );
-                return;
-            }
-
-            const { data, error } = await supabase
-                .from("notes")
-                .insert({
-                    title: updatedNote.title,
-                    content: updatedNote.content,
-                    category: updatedNote.category,
-                    status: updatedNote.status || 0,
-                })
-                .select()
-                .single();
-
-            if (!error && data) {
-                setNotes(notes =>
-                    notes.map(note =>
-                        note.id === updatedNote.id
-                            ? { ...data, created_at: new Date(data.created_at) }
-                            : note
-                    )
-                );
-            }
-        } else {
-            await supabase
-                .from("notes")
-                .update({
-                    title: updatedNote.title,
-                    content: updatedNote.content,
-                    category: updatedNote.category,
-                    status: updatedNote.status || 0,
-                })
-                .eq("id", updatedNote.id);
-        }
+        await supabase
+            .from("notes")
+            .update({
+                title: updatedNote.title,
+                content: updatedNote.content,
+                category: updatedNote.category,
+                status: updatedNote.status || 0,
+            })
+            .eq("id", updatedNote.id);
     };
 
     const deleteNote = async (noteId: number) => {
-        setNotes(notes.filter(note => note.id !== noteId));
+        setNotes(notes.filter((note) => note.id !== noteId));
         const { error } = await supabase
             .from("notes")
             .delete()
@@ -137,16 +98,16 @@ export default function Home() {
     };
 
     return (
-        <div className="flex flex-row h-screen">
-            <div className="max-w-60 border-r shadow-md bg-primaryBlack text-neonGreen">
+        <div className="flex flex-row h-screen bg-gradient-to-t from-indigo-200 via-pink-200 to-yellow-200">
+            <div className="max-w-60 border-r shadow-md bg-gradient-to-b from-indigo-500 to-pink-500 text-white">
                 <Sidebar onFilterChange={setFilterId} />
             </div>
-            <div className="flex flex-col w-full bg-primaryBlack text-neonGreen">
+            <div className="flex flex-col w-full bg-pastelCream text-pastelGray p-6">
                 <div className="p-4 flex justify-between items-center">
-                    <NoteStats notes={notes} />
+                    {/* Add a button to add a new note */}
                     <button
                         onClick={handleAddNote}
-                        className="bg-neonGreen text-primaryBlack px-4 py-2 rounded-lg font-semibold hover:bg-emeraldGreen"
+                        className="px-6 py-3 bg-pastelGreen text-white rounded-xl hover:bg-pastelBlue transition-all"
                     >
                         Agregar Nota
                     </button>
@@ -158,8 +119,18 @@ export default function Home() {
                     {isLoading
                         ? skeletonLoader()
                         : notes.length === 0
-                        ? <p className="text-xl font-semibold text-emeraldGreen animate-pulse">No hay notas con esta categoría...</p>
-                        : <NoteList notes={notes} onUpdateNote={updateNote} onDeleteNote={deleteNote} />}
+                        ? (
+                            <p className="text-xl font-semibold text-pastelBlue animate-pulse">
+                                No hay notas con esta categoría...
+                            </p>
+                        )
+                        : (
+                            <NoteList
+                                notes={notes}
+                                onUpdateNote={updateNote}
+                                onDeleteNote={deleteNote}
+                            />
+                        )}
                 </div>
             </div>
         </div>
@@ -171,10 +142,10 @@ const skeletonLoader = () => {
         <div className="w-full h-screen flex p-4">
             <div className="space-y-2.5 animate-pulse w-full">
                 <div className="flex items-center w-full space-x-4">
-                    <div className="shadow-sm rounded-md h-44 bg-grayPrimary w-full"></div>
-                    <div className="shadow-sm rounded-md h-44 bg-grayPrimary w-full"></div>
-                    <div className="shadow-sm rounded-md h-44 bg-graySecondary w-full"></div>
-                    <div className="shadow-sm rounded-md h-44 bg-emeraldGreen w-full"></div>
+                    <div className="shadow-sm rounded-md h-44 bg-pastelPink w-full"></div>
+                    <div className="shadow-sm rounded-md h-44 bg-pastelGreen w-full"></div>
+                    <div className="shadow-sm rounded-md h-44 bg-pastelBlue w-full"></div>
+                    <div className="shadow-sm rounded-md h-44 bg-pastelOrange w-full"></div>
                 </div>
                 <span className="sr-only">Loading...</span>
             </div>

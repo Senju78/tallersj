@@ -9,15 +9,21 @@ interface NoteListProps {
 
 const NoteList = ({ notes, onUpdateNote, onDeleteNote }: NoteListProps) => {
     return (
-        <div className="flex flex-wrap p-6 gap-6 bg-primaryBlack text-neonGreen max-h-screen overflow-auto rounded-lg">
-            {notes.map((note) => (
-                <NoteCard
-                    key={note.id}
-                    note={note}
-                    onUpdateNote={onUpdateNote}
-                    onDeleteNote={onDeleteNote}
-                />
-            ))}
+        <div className="flex flex-wrap p-6 gap-6 bg-pastelCream text-pastelPurple max-h-screen overflow-auto rounded-lg shadow-md transition-all ease-in-out duration-300">
+            {notes.length === 0 ? (
+                <p className="text-xl font-semibold text-pastelBlue animate-pulse">
+                    No hay notas disponibles...
+                </p>
+            ) : (
+                notes.map((note) => (
+                    <NoteCard
+                        key={note.id}
+                        note={note}
+                        onUpdateNote={onUpdateNote}
+                        onDeleteNote={onDeleteNote}
+                    />
+                ))
+            )}
         </div>
     );
 };
